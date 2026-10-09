@@ -1,0 +1,29 @@
+{
+  "name": "foodapp-auth-backend",
+  "version": "1.0.0",
+  "description": "Beginner-friendly authentication backend with Redis temporary verification and PostgreSQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "auth",
+    "redis",
+    "postgres",
+    "docker",
+    "verification"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.16",
+    "pg": "^8.13.1"
+  }
+}

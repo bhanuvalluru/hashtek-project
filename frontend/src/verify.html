@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FoodApp - Email Verification</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container" style="max-width: 600px; margin-top: 40px;">
+    <!-- Header -->
+    <header>
+      <div class="brand-badge">
+        <span>⚡ Email Verification</span>
+      </div>
+      <h1>Account Activation</h1>
+      <p>Validating your temporary token from Redis...</p>
+    </header>
+
+    <div class="card" style="text-align: center;">
+      <!-- State 1: Verifying / Loading -->
+      <div id="verifyingState">
+        <div style="font-size: 40px; margin-bottom: 16px;">⏳</div>
+        <h3 class="card-title">Verifying your email...</h3>
+        <p class="card-subtitle">
+          Retrieving your pending registration from Redis and saving to PostgreSQL.
+        </p>
+      </div>
+
+      <!-- State 2: Success -->
+      <div id="successState" style="display: none;">
+        <div style="font-size: 48px; margin-bottom: 16px; color: #10b981;">🎉</div>
+        <h3 class="card-title" style="color: #166534;">Email Verified Successfully!</h3>
+        <p id="successMessage" class="card-subtitle" style="color: #334155; margin-bottom: 24px;">
+          Your user details have been moved from temporary Redis cache into the PostgreSQL database!
+        </p>
+        <a href="index.html" class="btn" style="text-decoration: none; display: inline-flex;">
+          👉 Proceed to Login
+        </a>
+      </div>
+
+      <!-- State 3: Error -->
+      <div id="errorState" style="display: none;">
+        <div style="font-size: 48px; margin-bottom: 16px; color: #ef4444;">⚠️</div>
+        <h3 class="card-title" style="color: #991b1b;">Verification Failed</h3>
+        <p id="errorMessage" class="card-subtitle" style="color: #64748b; margin-bottom: 24px;">
+          The token was not found in Redis or may have expired after 15 minutes.
+        </p>
+        <a href="index.html" class="btn btn-secondary" style="text-decoration: none; display: inline-flex;">
+          Back to Registration
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function verifyToken() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      if (!token) {
+        document.getElementById('verifyingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('errorMessage').textContent = 'No verification token provided in the URL.';
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token })
+        });
+
+        const data = await response.json();
+
+        document.getElementById('verifyingState').style.display = 'none';
+
+        if (response.ok && data.success) {
+          document.getElementById('successState').style.display = 'block';
+          if (data.message) {
+            document.getElementById('successMessage').textContent = data.message;
+          }
+        } else {
+          document.getElementById('errorState').style.display = 'block';
+          document.getElementById('errorMessage').textContent = data.error || 'Verification failed.';
+        }
+      } catch (err) {
+        document.getElementById('verifyingState').style.display = 'none';
+        document.getElementById('errorState').style.display = 'block';
+        document.getElementById('errorMessage').textContent = 'Network error connecting to backend service.';
+      }
+    }
+
+    // Auto verify when page loads
+    window.addEventListener('DOMContentLoaded', verifyToken);
+  </script>
+</body>
+</html>

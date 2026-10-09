@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FoodApp - Secure Auth with Redis & PostgreSQL</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand-badge">
+        <span>🐳 Dockerized Web App</span> • <span>⚡ Redis + PostgreSQL</span>
+      </div>
+      <h1>FoodApp Auth Portal</h1>
+      <p>Beginner-friendly authentication architecture with temporary Redis verification</p>
+    </header>
+
+    <!-- Tab Navigation -->
+    <div class="tabs" id="tabNav">
+      <button class="tab-btn active" onclick="switchTab('register')">1. Register</button>
+      <button class="tab-btn" onclick="switchTab('login')">2. Log In</button>
+      <button class="tab-btn" onclick="switchTab('workflow')">3. How It Works</button>
+    </div>
+
+    <!-- Alert Banner -->
+    <div id="globalAlert" class="alert"></div>
+
+    <!-- TAB 1: REGISTRATION -->
+    <div id="registerTab" class="card">
+      <h2 class="card-title">Create an Account</h2>
+      <p class="card-subtitle">
+        Your registration details will be stored <strong>temporarily in Redis</strong> until you verify your email.
+      </p>
+
+      <form id="registerForm" onsubmit="handleRegister(event)">
+        <div class="form-group">
+          <label for="regName">Full Name</label>
+          <input type="text" id="regName" placeholder="e.g. John Doe" required autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label for="regEmail">Email Address</label>
+          <input type="email" id="regEmail" placeholder="e.g. john@example.com" required autocomplete="email">
+        </div>
+
+        <div class="form-group">
+          <label for="regPassword">Password (Min. 6 characters)</label>
+          <input type="password" id="regPassword" placeholder="••••••••" minlength="6" required autocomplete="new-password">
+        </div>
+
+        <button type="submit" class="btn" id="regSubmitBtn">
+          <span>Create Account & Send Verification Link</span>
+        </button>
+      </form>
+
+      <!-- Simulation & Verification Result Box -->
+      <div id="regResultBox" class="sim-box" style="display: none;">
+        <h4>📧 Email Verification Link Generated!</h4>
+        <p style="font-size: 0.9rem; color: #475569; margin-bottom: 6px;">
+          Your details are temporarily saved in <strong>Redis (TTL: 15 minutes)</strong>. In a live production server, this link arrives in your inbox. For testing, click below:
+        </p>
+        <a id="simulatedVerifyLink" href="#" class="sim-link" target="_blank"></a>
+        <div style="margin-top: 10px;">
+          <a id="directVerifyBtn" href="#" class="btn" style="text-decoration: none; width: auto; display: inline-flex; padding: 10px 18px;">
+            👉 Click Here to Verify Account Now
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: LOGIN -->
+    <div id="loginTab" class="card" style="display: none;">
+      <!-- Form state when NOT logged in -->
+      <div id="loginFormContainer">
+        <h2 class="card-title">Welcome Back</h2>
+        <p class="card-subtitle">
+          Only users who have successfully verified their email can log in.
+        </p>
+
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <div class="form-group">
+            <label for="loginEmail">Email Address</label>
+            <input type="email" id="loginEmail" placeholder="e.g. john@example.com" required autocomplete="email">
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+
+          <button type="submit" class="btn" id="loginSubmitBtn">
+            <span>Log In</span>
+          </button>
+        </form>
+      </div>
+
+      <!-- Dashboard state when LOGGED IN -->
+      <div id="dashboardContainer" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <div>
+            <h2 class="card-title" id="dashGreeting">Hello, User! 👋</h2>
+            <p class="card-subtitle" style="margin-bottom: 0;">You are authenticated and your account is active.</p>
+          </div>
+          <button class="btn btn-danger" style="width: auto; padding: 8px 16px;" onclick="handleLogout()">Log Out</button>
+        </div>
+
+        <div style="background: #f1f5f9; border-radius: 8px; padding: 16px; margin: 20px 0;">
+          <div style="margin-bottom: 10px;"><strong>User ID:</strong> <span id="dashUserId"></span></div>
+          <div style="margin-bottom: 10px;"><strong>Name:</strong> <span id="dashName"></span></div>
+          <div style="margin-bottom: 10px;"><strong>Email:</strong> <span id="dashEmail"></span></div>
+          <div style="margin-bottom: 10px;">
+            <strong>Database Status:</strong> <span style="background: #dcfce7; color: #166534; padding: 3px 8px; border-radius: 4px; font-weight: bold;">Verified & Stored in PostgreSQL ✅</span>
+          </div>
+          <div><strong>Member Since:</strong> <span id="dashDate"></span></div>
+        </div>
+
+        <div class="alert alert-info" style="display: block;">
+          💡 <strong>What just happened?</strong> You registered, your credentials waited temporarily in Redis, you verified the link, and backend transferred your record safely into PostgreSQL. You are now authorized via a secure JWT token!
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: WORKFLOW EXPLAINER & ARCHITECTURE -->
+    <div id="workflowTab" class="workflow-section" style="display: none;">
+      <h3>🛠️ How This Architecture Works (Step-by-Step)</h3>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <div class="step-title">User Registration</div>
+          <div class="step-desc">
+            User submits Name, Email, Password. Password is hashed using <code style="color: #38bdf8;">bcrypt</code>.
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <div class="step-title">Temporary Redis Storage</div>
+          <div class="step-desc">
+            Registration details & unique token are saved in <span class="badge-redis">Redis</span> with a 15-minute TTL.
+            <em>PostgreSQL is NOT touched yet!</em>
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <div class="step-title">Email Verification Link</div>
+          <div class="step-desc">
+            A verification link with the token is emailed (or logged to Docker console).
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">4</div>
+          <div class="step-title">Database Storage & Cleanup</div>
+          <div class="step-desc">
+            When verified, user details are moved from Redis into <span class="badge-pg">PostgreSQL</span> and the Redis temporary key is deleted.
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">5</div>
+          <div class="step-title">Login Enforcement</div>
+          <div class="step-desc">
+            Only users in PostgreSQL can log in. Pending Redis users are rejected with a prompt to verify first!
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Redis & DB Inspector -->
+      <div style="margin-top: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h4 style="color: #cbd5e1;">🔍 Live System Inspector (Redis Cache & DB State)</h4>
+          <button class="btn btn-secondary" style="width: auto; padding: 6px 14px; font-size: 0.85rem;" onclick="refreshSystemStatus()">
+            🔄 Refresh Status
+          </button>
+        </div>
+        <div id="inspectorDisplay" class="inspector-box">
+          Click "Refresh Status" to inspect active Redis pending keys and verified users...
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+      FoodApp Auth System &bull; Dockerized with Nginx, Node.js Express, Redis & PostgreSQL
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
